@@ -103,6 +103,7 @@ impl From<&mut task::Context<'_>> for UnsafeContextRef {
 }
 
 unsafe impl Send for UnsafeContextRef {}
+unsafe impl Sync for UnsafeContextRef {}
 
 #[doc(hidden)]
 pub struct UnsafeMutBufRef(NonNull<[u8]>);
@@ -123,6 +124,7 @@ impl From<&mut [u8]> for UnsafeMutBufRef {
 }
 
 unsafe impl Send for UnsafeMutBufRef {}
+unsafe impl Sync for UnsafeMutBufRef {}
 
 #[doc(hidden)]
 pub struct AsyncReadContext {
@@ -163,10 +165,18 @@ where
 
 fn _check_traits() {
     fn assert_send<T: Send>(_: T) {}
+    fn assert_sync<T: Sync>(_: T) {}
     fn assert_debug<T: std::fmt::Debug>(_: T) {}
 
     unsafe {
         assert_send(make_async_read(move |_: AsyncReadContext| {
+            if false {
+                yield Poll::Pending;
+            }
+            Ok(())
+        }));
+
+        assert_sync(make_async_read(move |_: AsyncReadContext| {
             if false {
                 yield Poll::Pending;
             }
