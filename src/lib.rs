@@ -64,6 +64,14 @@ where
             .generator
             .resume(AsyncReadContext::new(cx, buf))
         {
+            GeneratorState::Yielded(Poll::Ready(0)) => {
+                if buf.is_empty() {
+                    Poll::Ready(Ok(0))
+                } else {
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+            }
             GeneratorState::Yielded(Poll::Ready(count)) => Poll::Ready(Ok(count)),
             GeneratorState::Yielded(Poll::Pending) => Poll::Pending,
             GeneratorState::Complete(Ok(())) => Poll::Ready(Ok(0)),
