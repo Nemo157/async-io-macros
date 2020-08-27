@@ -105,17 +105,20 @@ impl syn::visit_mut::VisitMut for ReplaceYield<'_> {
             }
             Expr::Yield(node) => {
                 let context_arg = self.0;
-                let closure = node.expr.as_ref().unwrap();
-                *i = syn::parse_quote!({
-                    fn yield_buffer(
-                        mut context: ::async_io_macros::AsyncReadContext,
-                        closure: impl ::std::ops::FnOnce(&mut [u8]) -> ::std::io::Result<usize>,
-                    ) -> ::std::io::Result<usize> {
-                        closure(unsafe { context.get_buffer() })
+                match node.expr.as_deref() {
+                    Some(Expr::Closure(closure)) => {
+                        let buffer_arg = closure.inputs.first().unwrap();
+                        let body = &closure.body;
+                        *i = syn::parse_quote!({
+                            let count: ::std::io::Result<usize> = {
+                                let #buffer_arg = unsafe { #context_arg.get_buffer() };
+                                #body
+                            };
+                            #context_arg = yield ::core::task::Poll::Ready(count?);
+                        });
                     }
-                    let count = yield_buffer(#context_arg, #closure)?;
-                    #context_arg = yield ::core::task::Poll::Ready(count);
-                });
+                    _ => panic!(),
+                }
             }
             i => {
                 syn::visit_mut::visit_expr_mut(self, i);
