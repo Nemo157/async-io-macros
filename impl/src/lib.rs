@@ -109,11 +109,11 @@ impl syn::visit_mut::VisitMut for ReplaceYield<'_> {
                 *i = syn::parse_quote!({
                     fn yield_buffer(
                         mut context: ::async_io_macros::AsyncReadContext,
-                        closure: impl ::std::ops::FnOnce(&mut [u8]) -> usize,
-                    ) -> usize {
+                        closure: impl ::std::ops::FnOnce(&mut [u8]) -> ::std::io::Result<usize>,
+                    ) -> ::std::io::Result<usize> {
                         closure(unsafe { context.get_buffer() })
                     }
-                    let count = yield_buffer(#context_arg, #closure);
+                    let count = yield_buffer(#context_arg, #closure)?;
                     #context_arg = yield ::core::task::Poll::Ready(count);
                 });
             }
