@@ -42,6 +42,14 @@ pin_project_lite::pin_project! {
     }
 }
 
+impl<G> std::fmt::Debug for AsyncReadImpl<G> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsyncReadImpl")
+            .field("generator", &std::any::type_name::<G>())
+            .finish()
+    }
+}
+
 impl<G> AsyncRead for AsyncReadImpl<G>
 where
     G: Generator<AsyncReadContext, Yield = Poll<usize>, Return = Result<()>>,
@@ -146,18 +154,26 @@ impl AsyncReadContext {
 /// # Safety
 /// TODO
 #[doc(hidden)]
-pub unsafe fn make_async_read<G>(generator: G) -> impl AsyncRead
+pub unsafe fn make_async_read<G>(generator: G) -> impl AsyncRead + std::fmt::Debug
 where
     G: Generator<AsyncReadContext, Return = Result<()>, Yield = Poll<usize>>,
 {
     AsyncReadImpl { generator }
 }
 
-fn _check_send() {
+fn _check_traits() {
     fn assert_send<T: Send>(_: T) {}
+    fn assert_debug<T: std::fmt::Debug>(_: T) {}
 
     unsafe {
         assert_send(make_async_read(move |_: AsyncReadContext| {
+            if false {
+                yield Poll::Pending;
+            }
+            Ok(())
+        }));
+
+        assert_debug(make_async_read(move |_: AsyncReadContext| {
             if false {
                 yield Poll::Pending;
             }
